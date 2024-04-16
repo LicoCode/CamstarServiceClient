@@ -131,7 +131,7 @@ namespace CamstarServiceClient
                             inputData.revisionedObjectField(property.Name).setRef(
                                 revisioned?.name,
                                 revisioned?.revision,
-                                revisioned == null ? false : revisioned.useROR);
+                                (bool)(revisioned == null ? false : revisioned.useROR));
                             break;
                         case ReflectionTypeEnum.ServiceData:
                             generateInputData(inputData.subentityField(property.Name), propertyValue);
@@ -184,7 +184,7 @@ namespace CamstarServiceClient
                             var namedList = inputData.namedObjectList(property.Name);
                             foreach (var item in collection)
                             {
-                                namedList.appendItem((item as NamedDataObject)?.name);
+                                namedList.appendItem((item as NamedDataObject)?.Name);
                             }
                             break;
                         case ReflectionTypeEnum.RevisionedObjectCollection:
@@ -194,7 +194,7 @@ namespace CamstarServiceClient
                             foreach (var item in collection)
                             {
                                 revisioned = (item as RevisionedObject);
-                                revisionedList.appendItem(revisioned?.name, revisioned?.revision, revisioned == null ? false : revisioned.useROR);
+                                revisionedList.appendItem(revisioned?.name, revisioned?.revision, (bool)(revisioned != null ? revisioned.useROR : false));
                             }
                             break;
                        

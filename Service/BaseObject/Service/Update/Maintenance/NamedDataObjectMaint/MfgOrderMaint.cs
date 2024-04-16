@@ -1,21 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
 namespace CamstarServiceClient.Service
-{ 
-    public class MfgOrderMaint : NamedDataObjectMaint
+{
+    ///    @Description Maint service for MfgOrder.
+    ///    @author lichong
+    ///    @date 2024/4/15
+    public class MfgOrderMaint: NamedDataObjectMaint
     {
-        public MfgOrderRef ObjectToChange
-        {
-            get; set;
-        }
-        public MfgOrderChanges ObjectChanges
-        {
-            get; set;
-        }
-        
+        public MfgOrderChanges? ObjectChanges { get; set; }
+
+        public MfgOrderRef? ObjectToChange { get; set; }
+
     }
 }
+

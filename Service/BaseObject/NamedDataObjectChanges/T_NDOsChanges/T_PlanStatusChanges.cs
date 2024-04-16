@@ -1,21 +1,10 @@
-﻿using CamstarServiceClient.Service;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace CamstarServiceClient.Servic
+namespace CamstarServiceClient.Service
 {
-    public class T_PlanStatusChanges : NamedDataObjectChanges
+    ///    @Description Plan Status
+    ///    @author lichong
+    ///    @date 2024/4/15
+    public class T_PlanStatusChanges: T_NDOsChanges
     {
-        public string Name
-        {
-            get; set;
-        }
-        public string Description
-        {
-            get; set;
-        }
     }
 }
+

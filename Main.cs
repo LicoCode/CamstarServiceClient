@@ -17,11 +17,11 @@ namespace CamstarServiceClient
 
             Start start = new Start();
             start.Details = new StartDetails();
-            start.Details.ContainerName = "20240326_Product_A_03";
+            
             start.Details.StartReason = new StartReasonRef("StartReason_A");
             start.Details.Product = new ProductRef("Product_A", null, true);
             start.Details.Qty = 10;
-            start.Details.Level = new ContainerLevelRef("Lot");
+           
             start.CurrentStatusDetails = new CurrentStatusStartDetails();
             start.CurrentStatusDetails.Workflow = new WorkflowRef("Workflow_A", null, true);
             start.Details.Owner = new OwnerRef("Owner_A");
