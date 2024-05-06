@@ -1,4 +1,6 @@
-基于.net core 6.0，Camstar版本为2310，InsiteXMLClient.dll有做特殊处理，Service还在完善中
+当前示例是基于.net core 6.0，Camstar版本为2310，Service还在完善中
+
+需要根据Camstar的版本，替换InsiteXMLClient.dll，文件路径为Camstar安装目录/InSite XML Client，并且从.NET Framework转换为.NET Core
 
 
 #### 使用示例
