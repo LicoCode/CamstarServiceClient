@@ -5,6 +5,7 @@ namespace CamstarServiceClient.Service
     ///    @date 2024/4/15
     public abstract class BillRef: RevisionedObject
     {
+        public BillRef(string name, string revision, bool useROR) : base(name, revision, useROR) { }
     }
 }
 

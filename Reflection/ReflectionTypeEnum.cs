@@ -21,6 +21,8 @@ namespace CamstarServiceClient.Reflection
         ObjectChanges,
         RevisionedObjectMaint,
         NamedDataObjectMaint,
-        NamedSubentityChangesCollection
+        NamedSubentityChangesCollection,
+        Other,
+        DateTime
     }
 }

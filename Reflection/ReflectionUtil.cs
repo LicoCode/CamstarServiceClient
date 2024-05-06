@@ -18,13 +18,17 @@ namespace CamstarServiceClient.Reflection
         public static ReflectionTypeEnum GetCDOType(Type type)
         {
             var propertyType = type;
-            if (IsNullablePrimitive(propertyType) || propertyType.IsPrimitive)
+            if (IsPrimitive(propertyType))
             {
                 return ReflectionTypeEnum.PrimitiveValue;
             }
             else if (IsString(propertyType))
             {
                 return ReflectionTypeEnum.String;
+            }
+            else if (IsDateTime(propertyType))
+            {
+                return ReflectionTypeEnum.DateTime;
             }
             else if (IsContainer(propertyType))
             {
@@ -66,7 +70,7 @@ namespace CamstarServiceClient.Reflection
             {
                 return ReflectionTypeEnum.ServiceDataCollection;
             }
-            else if (IsNullableEnum(propertyType) || propertyType.IsEnum)
+            else if (IsEnum(propertyType))
             {
                 return ReflectionTypeEnum.EnumValue;
             }
@@ -80,9 +84,10 @@ namespace CamstarServiceClient.Reflection
             }
             else
             {
-                throw new Exception("Type " + propertyType.Name + " is not support");
+                return ReflectionTypeEnum.Other; 
             }
         }
+
 
         /// <summary>
         /// 是否为NDO
@@ -273,7 +278,7 @@ namespace CamstarServiceClient.Reflection
         /// </summary>
         /// <param name="type"></param>
         /// <returns></returns>
-        private static bool IsNullableEnum(Type type)
+        private static bool IsEnum(Type type)
         {
 
             if (type.IsGenericType)
@@ -283,15 +288,21 @@ namespace CamstarServiceClient.Reflection
                 {
                     return true;
                 }
+                else
+                {
+                    return false;
+                }
             }
-            return false;
+            else {
+                return type.IsEnum;
+            }
         }
         /// <summary>
         /// 是否为可为null的基本数据类型
         /// </summary>
         /// <param name="type"></param>
         /// <returns></returns>
-        private static bool IsNullablePrimitive(Type type)
+        private static bool IsPrimitive(Type type)
         {
             if (type.IsGenericType)
             {
@@ -300,8 +311,13 @@ namespace CamstarServiceClient.Reflection
                 {
                     return true;
                 }
+                else {
+                    return false;
+                }
             }
-            return false;
+            else {
+                return type.IsPrimitive;
+            }
         }
         /// <summary>
         /// 是否为字符串
@@ -312,6 +328,31 @@ namespace CamstarServiceClient.Reflection
         {
 
             if (!type.IsGenericType && type.Equals(typeof(string)))
+            {
+                return true;
+            }
+            return false;
+        }
+        /// <summary>
+        /// 是否为时间格式
+        /// </summary>
+        /// <param name="type"></param>
+        /// <returns></returns>
+        private static bool IsDateTime(Type type)
+        {
+            if (type.IsGenericType)
+            {
+                Type[] arg = type.GetGenericArguments();
+                if (arg.Length > 0 && arg[0].Equals(typeof(DateTime)))
+                {
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            else if (!type.IsGenericType && type.Equals(typeof(DateTime)))
             {
                 return true;
             }

@@ -5,6 +5,7 @@ namespace CamstarServiceClient.Service
     ///    @date 2024/4/15
     public abstract class UserCodeRef: NamedDataObject
     {
+        public UserCodeRef(string name) : base(name) { }
     }
 }
 

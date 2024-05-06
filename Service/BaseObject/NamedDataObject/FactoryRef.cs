@@ -5,6 +5,7 @@ namespace CamstarServiceClient.Service
     ///    @date 2024/4/15
     public class FactoryRef: NamedDataObject
     {
+        public FactoryRef(string name) : base(name) { }
     }
 }
 

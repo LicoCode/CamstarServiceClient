@@ -3,9 +3,14 @@ using CamstarServiceClient.Config;
 using CamstarServiceClient.Reflection;
 using CamstarServiceClient.Service;
 using Microsoft.VisualBasic.FileIO;
+using System;
 using System.Collections;
+using System.Net;
 using System.Reflection;
+using System.Reflection.Metadata;
 using System.Threading.Channels;
+using System.Xml.Linq;
+using System.Xml.Serialization;
 
 namespace CamstarServiceClient
 {
@@ -17,95 +22,249 @@ namespace CamstarServiceClient
         /// <summary>
         /// Camstar连接
         /// </summary>
-        private static csiConnection _connection = new csiClient().createConnection(ServiceConfiguration.Host, ServiceConfiguration.Port);
+        private readonly csiConnection _connection;
         /// <summary>
-        /// 默认客户端
+        /// camstar连接session
         /// </summary>
-        public static ServiceClient defaultClient = new ServiceClient(Login(ServiceConfiguration.DefaultUser, ServiceConfiguration.DefaultPassword));
-        /// <summary>
-        /// camstar连接session，执行Login时初始化
-        /// </summary>
-        private csiSession _session;
-        /// <summary>
-        /// 登录Camstar
-        /// </summary>
-        /// <param name="userName"></param>
-        /// <param name="password"></param>
-        /// <param name="sessionName"></param>
-        public static string Login(string userName, string password)
-        {
+        private readonly csiSession _session;
+        private object _syncObject = new object();
+
+        public ServiceClient() {
+            _connection = new csiClient().createConnection(ServiceConfiguration.Host, ServiceConfiguration.Port);
             string sessionName = Guid.NewGuid().ToString();
-            _connection.createSession(userName, password, sessionName);
-            return sessionName;
+            _session = _connection.createSession(ServiceConfiguration.DefaultUser, ServiceConfiguration.DefaultPassword, sessionName);
         }
-        /// <summary>
-        /// 基于sessionName创建Service客户端
-        /// </summary>
-        /// <param name="sessionName">sessionName</param>
-        /// <exception cref="ServiceClientException"></exception>
-        public ServiceClient(string sessionName) {
-            _session = _connection.findSession(sessionName);
-            if (_session == null) {
-                throw new ServiceClientException("session not found");
-            } 
+
+        public ServiceClient(string user, string password)
+        {
+            _connection = new csiClient().createConnection(ServiceConfiguration.Host, ServiceConfiguration.Port);
+            string sessionName = Guid.NewGuid().ToString();
+            _session = _connection.createSession(user, password, sessionName);
+        }
+
+        public ServiceClient(string host, int post ,string user, string password)
+        {
+            _connection = new csiClient().createConnection(host, post);
+            string sessionName = Guid.NewGuid().ToString();
+            _session = _connection.createSession(user, password, sessionName);
         }
         /// <summary>
         /// 提交
         /// </summary>
-        /// <param name="baseObject"></param>
+        /// <param name="service"></param>
         /// <returns></returns>
-        public OpcenterResult Submit(Service.Service service) {
-            try
-            {
-                Type type = service.GetType();
-                var serviceName = type.Name;
-                var documentName = serviceName + "Doc";
-                _session.removeDocument(documentName);
-                var _document = _session.createDocument(documentName);
-                var _service = _document.createService(serviceName);
-                if (ReflectionCache.GetCDOTypes(type) == ReflectionTypeEnum.RevisionedObjectMaint)
+        public OpcenterResult Submit(Service.Service service)
+        {
+            lock (_syncObject) {
+                try
                 {
-                    var preInputData = _service.inputData();
-                    preInputData.dataField("SyncName").setValue((service as RevisionedObjectMaint)?.SyncName);
-                    preInputData.dataField("SyncRevision").setValue((service as RevisionedObjectMaint)?.SyncRevision);
-                    _service.perform("Sync");
+                    Type type = service.GetType();
+                    var serviceName = type.Name;
+                    var documentName = serviceName + "Doc";
+                    _session.removeDocument(documentName);
+                    var _document = _session.createDocument(documentName);
+                    var _service = _document.createService(serviceName);
+                    if (ReflectionCache.GetCDOTypes(type) == ReflectionTypeEnum.RevisionedObjectMaint)
+                    {
+                        var preInputData = _service.inputData();
+                        preInputData.dataField("SyncName").setValue((service as RevisionedObjectMaint)?.SyncName);
+                        preInputData.dataField("SyncRevision").setValue((service as RevisionedObjectMaint)?.SyncRevision);
+                        _service.perform("Sync");
+                    }
+                    if (ReflectionCache.GetCDOTypes(type) == ReflectionTypeEnum.NamedDataObjectMaint)
+                    {
+                        var preInputData = _service.inputData();
+                        preInputData.dataField("SyncName").setValue((service as NamedDataObjectMaint)?.SyncName);
+                        _service.perform("Sync");
+                    }
+                    var _inputData = _service.inputData();
+                    GenerateInputData(_inputData, service);
+                    _service.setExecute();
+                    var requestData = _service.requestData();
+                    requestData.requestField("CompletionMsg");
+                    var document = _document.submit();
+                    if (document.checkErrors())
+                    {
+                        var csiExceptionData = document.exceptionData();
+                        return OpcenterResult.Fail(csiExceptionData.getDescription());
+                    }
+                    else
+                    {
+                        var completionMsg = (csiDataField)document.getService().responseData().getResponseFieldByName("CompletionMsg");
+                        var message = completionMsg.getValue();
+                        return OpcenterResult.Success(message);
+                    }
                 }
-                if (ReflectionCache.GetCDOTypes(type) == ReflectionTypeEnum.NamedDataObjectMaint)
+                catch (Exception ex)
                 {
-                    var preInputData = _service.inputData();
-                    preInputData.dataField("SyncName").setValue((service as NamedDataObjectMaint)?.SyncName);
-                    _service.perform("Sync");
-                }
-                var _inputData = _service.inputData();
-                generateInputData(_inputData, service);
-                _service.setExecute();
-                var requestData = _service.requestData();
-                requestData.requestField("CompletionMsg");
-                var document = _document.submit();
-                if (document.checkErrors())
-                {
-                    var csiExceptionData = document.exceptionData();
-                    return OpcenterResult.Fail(csiExceptionData.getDescription());
-                }
-                else
-                {
-                    var completionMsg = (csiDataField)document.getService().responseData().getResponseFieldByName("CompletionMsg");
-                    var message = completionMsg.getValue();
-                    return OpcenterResult.Success(message);
+                    return OpcenterResult.Fail(ex.Message);
                 }
             }
-            catch (Exception ex) {
-                return OpcenterResult.Fail(ex.Message);
-            }
-            
         }
 
+        /// <summary>
+        /// 提交
+        /// </summary>
+        /// <param name="service"></param>
+        /// <returns></returns>
+        public Task<OpcenterResult> SubmitAsync(Service.Service service)
+        {
+            return Task.Run(() => {
+                lock (_syncObject)
+                {
+                    try
+                    {
+                        Type type = service.GetType();
+                        var serviceName = type.Name;
+                        var documentName = serviceName + "Doc";
+                        _session.removeDocument(documentName);
+                        var _document = _session.createDocument(documentName);
+                        var _service = _document.createService(serviceName);
+                        if (ReflectionCache.GetCDOTypes(type) == ReflectionTypeEnum.RevisionedObjectMaint)
+                        {
+                            var preInputData = _service.inputData();
+                            preInputData.dataField("SyncName").setValue((service as RevisionedObjectMaint)?.SyncName);
+                            preInputData.dataField("SyncRevision").setValue((service as RevisionedObjectMaint)?.SyncRevision);
+                            _service.perform("Sync");
+                        }
+                        if (ReflectionCache.GetCDOTypes(type) == ReflectionTypeEnum.NamedDataObjectMaint)
+                        {
+                            var preInputData = _service.inputData();
+                            preInputData.dataField("SyncName").setValue((service as NamedDataObjectMaint)?.SyncName);
+                            _service.perform("Sync");
+                        }
+                        var _inputData = _service.inputData();
+                        GenerateInputData(_inputData, service);
+                        _service.setExecute();
+                        var requestData = _service.requestData();
+                        requestData.requestField("CompletionMsg");
+                        var document = _document.submit();
+                        if (document.checkErrors())
+                        {
+                            var csiExceptionData = document.exceptionData();
+                            return OpcenterResult.Fail(csiExceptionData.getDescription());
+                        }
+                        else
+                        {
+                            var completionMsg = (csiDataField)document.getService().responseData().getResponseFieldByName("CompletionMsg");
+                            var message = completionMsg.getValue();
+                            return OpcenterResult.Success(message);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        return OpcenterResult.Fail(ex.Message);
+                    }
+                }
+            });
+        }
+        /// <summary>
+        /// 获取下拉值
+        /// </summary>
+        /// <param name="service"></param>
+        /// <returns></returns>
+        public OpcenterResult RequestSelectValuesEx<T>(Service.Service service, string fieldName, out List<T> selectValues, string? perEventName = null)
+        {
+            lock (_syncObject)
+            {
+                try
+                {
+                    Type type = service.GetType();
+                    var serviceName = type.Name;
+                    var documentName = serviceName + "Doc";
+                    _session.removeDocument(documentName);
+                    var _document = _session.createDocument(documentName);
+                    var _service = _document.createService(serviceName);
+                    if (ReflectionCache.GetCDOTypes(type) == ReflectionTypeEnum.RevisionedObjectMaint)
+                    {
+                        var preInputData = _service.inputData();
+                        preInputData.dataField("SyncName").setValue((service as RevisionedObjectMaint)?.SyncName);
+                        preInputData.dataField("SyncRevision").setValue((service as RevisionedObjectMaint)?.SyncRevision);
+                        _service.perform("Sync");
+                    }
+                    if (ReflectionCache.GetCDOTypes(type) == ReflectionTypeEnum.NamedDataObjectMaint)
+                    {
+                        var preInputData = _service.inputData();
+                        preInputData.dataField("SyncName").setValue((service as NamedDataObjectMaint)?.SyncName);
+                        _service.perform("Sync");
+                    }
+                    var _inputData = _service.inputData();
+                    if (perEventName != null)
+                    {
+                        _service.perform(perEventName);
+                    }
+                    GenerateInputData(_inputData, service);
+                    var requestData = _service.requestData();
+                    requestData.requestField("CompletionMsg");
+                    var requestField = requestData.requestField(fieldName);
+                    requestField.requestSelectionValuesEx();
+                    var document = _document.submit();
+                    if (document.checkErrors())
+                    {
+                        selectValues = new List<T>();
+                        var csiExceptionData = document.exceptionData();
+                        return OpcenterResult.Fail(csiExceptionData.getDescription());
+                    }
+                    else
+                    {
+                        var selectionValuesEx = document.getService().responseData().getResponseFieldByName(fieldName).getSelectionValuesEx();
+                        selectValues = GetSelectionValuesEx<T>(selectionValuesEx);
+                        var completionMsg = (csiDataField)document.getService().responseData().getResponseFieldByName("CompletionMsg");
+                        var message = completionMsg.getValue();
+                        return OpcenterResult.Success(message);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    selectValues = new List<T>();
+                    return OpcenterResult.Fail(ex.Message);
+                }
+            }
+
+        }
+        private static List<T> GetSelectionValuesEx<T>(csiSelectionValuesEx selectionValuesEx) {
+            var selectValues = new List<T>();
+            
+            var recordSet = selectionValuesEx.getRecordset();
+            if (recordSet.getRecordCount() > 0) {
+                int i = 0;
+                var t = typeof(T);
+                ConstructorInfo constructor = t.GetConstructor(Array.Empty<Type>());
+                if (constructor == null) {
+                    throw new Exception(t.Name + " is no parameterless constructor");
+                }
+                while (i < recordSet.getRecordCount())
+                {
+                    var value = constructor.Invoke(new object[] { });
+                    selectValues.Add((T)value);
+                    recordSet.moveNext();
+                    var fields = recordSet.getFields();
+                    foreach (var item in fields)
+                    {
+                        if (item != null) {
+                            PropertyInfo propertyInfo = t.GetProperty((item as csiRecordsetField).getName());
+                            // 检查字段是否存在
+                            if (propertyInfo != null)
+                            {
+                                // 通过反射给字段赋值
+                                propertyInfo.SetValue(value, Convert.ChangeType((item as csiRecordsetField).getValue(), propertyInfo.PropertyType));
+                            }
+                        }
+                        
+                    }
+                    i++;
+                }
+            }
+           
+            return selectValues;
+        }
         /// <summary>
         /// 通过反射获取Inputdata内容
         /// </summary>
         /// <param name="inputData"></param>
         /// <param name="data"></param>
-        private void generateInputData(csiObject inputData, Object data) {
+        private static void GenerateInputData(csiObject inputData, Object data)
+        {
             Type type = data.GetType();
             foreach (var property in ReflectionCache.GetPropertyInfos(type))
             {
@@ -114,30 +273,35 @@ namespace CamstarServiceClient
                 {
                     var propertyType = property.PropertyType;
                     ReflectionTypeEnum reflectionEnum = ReflectionCache.GetCDOTypes(propertyType);
-                    switch (reflectionEnum) {
+                    switch (reflectionEnum)
+                    {
                         case ReflectionTypeEnum.String:
                             inputData.dataField(property.Name).setValue(propertyValue?.ToString());
                             break;
+                        case ReflectionTypeEnum.DateTime:
+                            var dateTime = (DateTime)propertyValue;
+                            inputData.dataField(property.Name).setValue(dateTime.ToString("yyyy-MM-ddTHH:mm:ss.fff"));
+                            break;
                         case ReflectionTypeEnum.Container:
-                            var name = propertyType.GetProperty("name")?.GetValue(propertyValue);
-                            inputData.containerField(property.Name).setRef(name?.ToString(), null);
+                            var container = (ContainerRef)propertyValue;
+                            inputData.containerField(property.Name).setRef(container.name, null);
                             break;
                         case ReflectionTypeEnum.NamedDataObject:
-                            name = propertyType.GetProperty("name")?.GetValue(propertyValue);
-                            inputData.namedObjectField(property.Name).setRef(name?.ToString());
+                            var namedDataObject = (NamedDataObject)propertyValue;
+                            inputData.namedObjectField(property.Name).setRef(namedDataObject.Name);
                             break;
                         case ReflectionTypeEnum.RevisionedObject:
                             var revisioned = (propertyValue as RevisionedObject);
                             inputData.revisionedObjectField(property.Name).setRef(
-                                revisioned?.name,
-                                revisioned?.revision,
-                                (bool)(revisioned == null ? false : revisioned.useROR));
+                                revisioned?.Name,
+                                revisioned?.Revision,
+                                revisioned == null ? false : revisioned.UseROR);
                             break;
                         case ReflectionTypeEnum.ServiceData:
-                            generateInputData(inputData.subentityField(property.Name), propertyValue);
+                            GenerateInputData(inputData.subentityField(property.Name), propertyValue);
                             break;
                         case ReflectionTypeEnum.ObjectChanges:
-                            generateInputData(inputData.subentityField(property.Name), propertyValue);
+                            GenerateInputData(inputData.subentityField(property.Name), propertyValue);
                             break;
                         case ReflectionTypeEnum.PrimitiveValue:
                             inputData.dataField(property.Name).setValue(propertyValue?.ToString());
@@ -152,7 +316,7 @@ namespace CamstarServiceClient
                             var subList = inputData.subentityList(property.Name);
                             foreach (var item in collection)
                             {
-                                generateInputData(subList.appendItem(), item);
+                                GenerateInputData(subList.appendItem(), item);
                             }
                             break;
                         case ReflectionTypeEnum.NamedSubentityChangesCollection:
@@ -163,19 +327,20 @@ namespace CamstarServiceClient
                             {
                                 var changes = item as NamedSubentityChanges;
                                 if (changes == null) continue;
-                                switch (changes.ExecuteAction) {
+                                switch (changes.ExecuteAction)
+                                {
                                     case ExecuteActionEnum.Add:
-                                        generateInputData(namedSubList.appendItem(changes.Name), changes);
-                                    break;
+                                        GenerateInputData(namedSubList.appendItem(changes.Name), changes);
+                                        break;
                                     case ExecuteActionEnum.Delete:
                                         namedSubList.deleteItemByName(changes.Name);
                                         break;
                                     case ExecuteActionEnum.Change:
-                                        generateInputData(namedSubList.changeItemByName(changes.Name), changes);
+                                        GenerateInputData(namedSubList.changeItemByName(changes.Name), changes);
                                         break;
                                     default:
                                         throw new ArgumentException("ItemChangeType " + changes.ExecuteAction + " is not support");
-                                }  
+                                }
                             }
                             break;
                         case ReflectionTypeEnum.NamedDataObjectCollection:
@@ -194,11 +359,11 @@ namespace CamstarServiceClient
                             foreach (var item in collection)
                             {
                                 revisioned = (item as RevisionedObject);
-                                revisionedList.appendItem(revisioned?.name, revisioned?.revision, (bool)(revisioned != null ? revisioned.useROR : false));
+                                revisionedList.appendItem(revisioned?.Name, revisioned?.Revision, revisioned == null ? false : revisioned.UseROR);
                             }
                             break;
-                       
-                        default : throw new ArgumentException("ReflectionType " + reflectionEnum + " is not support");
+
+                        default: throw new ArgumentException("ReflectionType " + property.PropertyType.Name + " is not support");
                     }
                 }
 

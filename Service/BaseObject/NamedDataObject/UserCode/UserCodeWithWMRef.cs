@@ -5,6 +5,7 @@ namespace CamstarServiceClient.Service
     ///    @date 2024/4/15
     public abstract class UserCodeWithWMRef: UserCodeRef
     {
+        public UserCodeWithWMRef(string name) : base(name) { }
     }
 }
 

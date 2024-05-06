@@ -5,6 +5,7 @@ namespace CamstarServiceClient.Service
     ///    @date 2024/4/15
     public class ES_NDOsRef: NamedDataObject
     {
+        public ES_NDOsRef(string name) : base(name) { }
     }
 }
 

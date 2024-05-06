@@ -5,14 +5,14 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace CamstarServiceClient.Service
-{ 
-    public class T_MfgPlanMaint : NamedDataObjectMaint
+{
+    public class MfgLineMaint : ES_NDOsMaint
     {
-        public T_MfgPlanRef ObjectToChange
+        public MfgLineRef ObjectToChange
         {
             get; set;
         }
-        public T_MfgPlanChanges ObjectChanges
+        public MfgLineChanges ObjectChanges
         {
             get; set;
         }
