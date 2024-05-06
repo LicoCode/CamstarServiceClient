@@ -11,7 +11,7 @@ namespace CamstarServiceClient
             //为CamstarServiceClient配置CamstarAppServer信息
             ServiceConfiguration.Host = "localhost";
             ServiceConfiguration.Port =443;
-            ServiceConfiguration.DefaultPassword = "Tenda.123";
+            ServiceConfiguration.DefaultPassword = "******";
             ServiceConfiguration.DefaultUser = "CamstarAdmin";
 
 
