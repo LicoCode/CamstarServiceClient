@@ -25,7 +25,7 @@ namespace CamstarServiceClient
             start.CurrentStatusDetails = new CurrentStatusStartDetails();
             start.CurrentStatusDetails.Workflow = new WorkflowRef("Workflow_A", "1", false);
             start.Details.Owner = new OwnerRef("Owner_A");
-            var result = new ServiceClient("CamstarAdmin", "Tenda.123").Submit(start);
+            var result = new ServiceClient("CamstarAdmin", "******").Submit(start);
         }
     }
 }
