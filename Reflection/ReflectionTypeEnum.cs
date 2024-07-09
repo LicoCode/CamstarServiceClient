@@ -4,14 +4,15 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace CamstarServiceClient.Reflection
+namespace CamstarService.Reflection
 {
     public enum ReflectionTypeEnum
     {
         NamedDataObject,
         RevisionedObject,
-        ServiceData,
-        ServiceDataCollection,
+        Subentity,
+        NamedSubentity,
+        SubentityCollection,
         EnumValue,
         PrimitiveValue,
         NamedDataObjectCollection,
@@ -22,7 +23,8 @@ namespace CamstarServiceClient.Reflection
         RevisionedObjectMaint,
         NamedDataObjectMaint,
         NamedSubentityChangesCollection,
-        Other,
-        DateTime
+        DateTime,
+        ContainerCollection,
+        Other
     }
 }

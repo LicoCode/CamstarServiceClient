@@ -1,11 +1,11 @@
-﻿using CamstarServiceClient.Service;
+﻿using CamstarService.ServiceContent;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace CamstarServiceClient.Reflection
+namespace CamstarService.Reflection
 {
     public class ReflectionUtil
     {
@@ -62,17 +62,25 @@ namespace CamstarServiceClient.Reflection
             {
                 return ReflectionTypeEnum.NamedSubentityChangesCollection;
             }
-            else if (IsServiceData(propertyType))
+            else if (IsNamedSubentity(propertyType))
             {
-                return ReflectionTypeEnum.ServiceData;
+                return ReflectionTypeEnum.NamedSubentity;
             }
-            else if (IsServiceDataCollection(propertyType))
+            else if (IsSubentity(propertyType))
             {
-                return ReflectionTypeEnum.ServiceDataCollection;
+                return ReflectionTypeEnum.Subentity;
+            }
+            else if (IsSubentityCollection(propertyType))
+            {
+                return ReflectionTypeEnum.SubentityCollection;
             }
             else if (IsEnum(propertyType))
             {
                 return ReflectionTypeEnum.EnumValue;
+            }
+            else if (IsContainerCollection(propertyType))
+            {
+                return ReflectionTypeEnum.ContainerCollection;
             }
             else if (IsRevisionedObjectCollection(propertyType))
             {
@@ -185,9 +193,22 @@ namespace CamstarServiceClient.Reflection
         /// </summary>
         /// <param name="type"></param>
         /// <returns></returns>
-        private static bool IsServiceData(Type type)
+        private static bool IsSubentity(Type type)
         {
-            if (!type.IsGenericType && type.IsSubclassOf(typeof(ServiceData)))
+            if (!type.IsGenericType && type.IsSubclassOf(typeof(Subentity)) && !IsNamedSubentity(type))
+            {
+                return true;
+            }
+            return false;
+        }
+        /// <summary>
+        /// 是否为ServiceData
+        /// </summary>
+        /// <param name="type"></param>
+        /// <returns></returns>
+        private static bool IsNamedSubentity(Type type)
+        {
+            if (!type.IsGenericType && type.IsSubclassOf(typeof(NamedSubentity)))
             {
                 return true;
             }
@@ -206,13 +227,13 @@ namespace CamstarServiceClient.Reflection
         /// </summary>
         /// <param name="type"></param>
         /// <returns></returns>
-        private static bool IsServiceDataCollection(Type type)
+        private static bool IsSubentityCollection(Type type)
         {
 
             if (type.IsGenericType)
             {
                 Type[] arg = type.GetGenericArguments();
-                if (arg.Length > 0 && IsServiceData(arg[0]))
+                if (arg.Length > 0 && IsSubentity(arg[0]))
                 {
                     return true;
                 }
@@ -255,6 +276,25 @@ namespace CamstarServiceClient.Reflection
             }
             return false;
         }
+        /// <summary>
+        /// 是否为Container集合
+        /// </summary>
+        /// <param name="type"></param>
+        /// <returns></returns>
+        private static bool IsContainerCollection(Type type)
+        {
+
+            if (type.IsGenericType)
+            {
+                Type[] arg = type.GetGenericArguments();
+                if (arg.Length > 0 && IsContainer(arg[0]))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+        
         /// <summary>
         /// 是否为RO集合
         /// </summary>

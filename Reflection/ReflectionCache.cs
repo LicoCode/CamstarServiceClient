@@ -1,13 +1,14 @@
-﻿using CamstarServiceClient.Reflection;
-using CamstarServiceClient.Service;
+﻿using CamstarService.Reflection;
+using CamstarService.ServiceContent;
 using System;
 using System.Collections.Concurrent;
 using System.Reflection;
 
-namespace CamstarServiceClient.Reflection {
-    /// <summary>
-    /// 为提高反射效率，建立反射信息缓存
-    /// </summary>
+/// <summary>
+/// 为提高反射效率，建立反射信息缓存
+/// </summary>
+namespace CamstarService.Reflection
+{
     public class ReflectionCache
     {
         /// <summary>
@@ -49,4 +50,5 @@ namespace CamstarServiceClient.Reflection {
         }
 
     }
+
 }
