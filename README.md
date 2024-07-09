@@ -3,10 +3,10 @@
 ServiceConfiguration.Host = “localhost”;
 ServiceConfiguration.Port = 443;
 ServiceConfiguration.DefaultUser = “CamstarAdmin”;
-ServiceConfiguration.DefaultPassword = “\*\*\*\*\*\*”;
+ServiceConfiguration.DefaultPassword = “******”;
 ServiceConfiguration.LoggerFactory = loggerFactory;
 
-var client = new ServiceClient("siemens", "\*\*\*\*\*\*");
+var client = new ServiceClient("siemens", "******");
 var result = client.Start("20240326_Product_A_03", "Lot", "Owner_A", "StartReason_A", "Workflow_A");
 
 client  = new ServiceClient();
